@@ -1,358 +1,292 @@
-// app/dashboard/page.tsx
 "use client";
 
+import { useEffect, useState } from "react";
+import { useFinanceStore, TransactionType, WalletType } from "@/store/useFinanceStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+//import { Label } from "@/components/ui/label";
+
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  LayoutGrid,
-  Plus,
-  Calendar,
-  Video,
-  ShoppingCart,
-  Coffee,
+    ArrowUpRight, ArrowDownRight, Plus, Calendar, Target,
+    Video, ShoppingCart, Coffee, CreditCard, Briefcase, Smartphone, Banknote,
+    TrendingUp, TrendingDown, Wallet as WalletIcon
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
 
-// --- MOCK DATA ---
-const barData = [
-  { name: "Jan", Income: 12000, Expense: 8000 },
-  { name: "Feb", Income: 15000, Expense: 9000 },
-  { name: "Mar", Income: 10000, Expense: 11000 },
-  { name: "Apr", Income: 16000, Expense: 10000 },
-  { name: "May", Income: 14000, Expense: 10500 },
-  { name: "Jun", Income: 8000, Expense: 7500 },
-  { name: "Jul", Income: 9000, Expense: 8000 },
-];
-
-const pieData = [
-  { name: "Cafe & Restaurants", value: 400, color: "#8b5cf6" }, // Purple
-  { name: "Entertainment", value: 300, color: "#c4b5fd" }, // Light Purple
-  { name: "Investments", value: 800, color: "#e2e8f0" }, // Gray
-];
-
-const recentTransactions = [
-  {
-    id: "1",
-    date: "25 Jul 12:30",
-    amount: "- $10",
-    name: "YouTube",
-    method: "VISA **3254",
-    category: "Subscription",
-    icon: Video,
-    color: "text-red-500",
-    bg: "bg-red-100 dark:bg-red-500/20",
-  },
-  {
-    id: "2",
-    date: "26 Jul 15:00",
-    amount: "- $150",
-    name: "Reserved",
-    method: "Mastercard **2154",
-    category: "Shopping",
-    icon: ShoppingCart,
-    color: "text-slate-500",
-    bg: "bg-slate-100 dark:bg-slate-500/20",
-  },
-  {
-    id: "3",
-    date: "27 Jul 9:00",
-    amount: "- $80",
-    name: "Yaposhka",
-    method: "Mastercard **2154",
-    category: "Cafe & Restaurants",
-    icon: Coffee,
-    color: "text-pink-500",
-    bg: "bg-pink-100 dark:bg-pink-500/20",
-  },
-];
+const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+        case 'subscription': return { icon: Video, color: "text-red-500", bg: "bg-red-100 dark:bg-red-500/20" };
+        case 'shopping': return { icon: ShoppingCart, color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-500/20" };
+        case 'cafe & restaurants': case 'food': return { icon: Coffee, color: "text-pink-500", bg: "bg-pink-100 dark:bg-pink-500/20" };
+        case 'income': case 'salary': return { icon: Briefcase, color: "text-green-500", bg: "bg-green-100 dark:bg-green-500/20" };
+        default: return { icon: CreditCard, color: "text-indigo-500", bg: "bg-indigo-100 dark:bg-indigo-500/20" };
+    }
+};
 
 export default function DashboardPage() {
-  return (
-    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
-      
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Welcome back, Adaline!
-          </h2>
-          <p className="text-slate-500 mt-1">It is the best time to manage your finances</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" className="rounded-full shadow-sm">
-            <Calendar className="mr-2 h-4 w-4" /> This month
-          </Button>
-          <Button variant="outline" className="rounded-full shadow-sm hidden sm:flex">
-            <LayoutGrid className="mr-2 h-4 w-4" /> Manage widgets
-          </Button>
-          <Button className="rounded-full shadow-sm bg-indigo-500 hover:bg-indigo-600 text-white">
-            <Plus className="mr-2 h-4 w-4" /> Add new widget
-          </Button>
-        </div>
-      </div>
+    const { transactions, wallets, goals, getTotalIncome, getTotalExpense, getBalance, addTransaction, addWallet, addGoal, addMoneyToGoal } = useFinanceStore();
 
-      {/* SUMMARY CARDS ROW */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1 */}
-        <Card className="rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 dark:text-slate-400">Total balance</CardTitle>
-            <div className="h-8 w-8 rounded-full border flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
-              <ArrowUpRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">$15,700<span className="text-slate-300 dark:text-slate-600">.00</span></div>
-            <div className="flex items-center text-xs">
-              <span className="flex items-center text-green-600 bg-green-100 dark:bg-green-500/20 px-2 py-1 rounded-full font-medium">
-                <ArrowUpRight className="h-3 w-3 mr-1" /> 12.1%
-              </span>
-              <span className="text-slate-400 ml-2">vs last month</span>
-            </div>
-          </CardContent>
-        </Card>
+    const [txOpen, setTxOpen] = useState(false);
+    const [walletOpen, setWalletOpen] = useState(false);
+    const [goalOpen, setGoalOpen] = useState(false);
+    const [fundOpen, setFundOpen] = useState<string | null>(null);
 
-        {/* Card 2 */}
-        <Card className="rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 dark:text-slate-400">Income</CardTitle>
-            <div className="h-8 w-8 rounded-full border flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
-              <ArrowUpRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">$8,500<span className="text-slate-300 dark:text-slate-600">.00</span></div>
-            <div className="flex items-center text-xs">
-              <span className="flex items-center text-green-600 bg-green-100 dark:bg-green-500/20 px-2 py-1 rounded-full font-medium">
-                <ArrowUpRight className="h-3 w-3 mr-1" /> 6.3%
-              </span>
-              <span className="text-slate-400 ml-2">vs last month</span>
-            </div>
-          </CardContent>
-        </Card>
+    const [newTx, setNewTx] = useState({ name: "", amount: "", category: "", type: "EXPENSE" as TransactionType, walletId: "w1" });
+    const [newWallet, setNewWallet] = useState({ name: "", type: "CARD" as WalletType, balance: "", accountNumber: "" });
+    const [newGoal, setNewGoal] = useState({ name: "", targetAmount: "" });
+    const [fundAmount, setFundAmount] = useState("");
 
-        {/* Card 3 */}
-        <Card className="rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 dark:text-slate-400">Expense</CardTitle>
-            <div className="h-8 w-8 rounded-full border flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
-              <ArrowUpRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">$6,222<span className="text-slate-300 dark:text-slate-600">.00</span></div>
-            <div className="flex items-center text-xs">
-              <span className="flex items-center text-red-500 bg-red-100 dark:bg-red-500/20 px-2 py-1 rounded-full font-medium">
-                <ArrowDownRight className="h-3 w-3 mr-1" /> 2.4%
-              </span>
-              <span className="text-slate-400 ml-2">vs last month</span>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Card 4 */}
-        <Card className="rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 dark:text-slate-400">Total savings</CardTitle>
-            <div className="h-8 w-8 rounded-full border flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
-              <ArrowUpRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">$32,913<span className="text-slate-300 dark:text-slate-600">.00</span></div>
-            <div className="flex items-center text-xs">
-              <span className="flex items-center text-green-600 bg-green-100 dark:bg-green-500/20 px-2 py-1 rounded-full font-medium">
-                <ArrowUpRight className="h-3 w-3 mr-1" /> 12.1%
-              </span>
-              <span className="text-slate-400 ml-2">vs last month</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    const [userName, setUserName] = useState("Guest");
 
-      {/* MIDDLE SECTION: CHARTS */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-        {/* Main Bar Chart */}
-        <Card className="col-span-1 lg:col-span-2 rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold">Money flow</CardTitle>
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></div>Income</div>
-              <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-indigo-300 mr-2"></div>Expense</div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} barGap={8}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(value) => `$${value/1000}k`} dx={-10} />
-                  <Tooltip 
-                    cursor={{fill: 'transparent'}}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="Income" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="Expense" fill="#c4b5fd" radius={[4, 4, 0, 0]} barSize={16} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+    useEffect(() => {
+        const currentUser = JSON.parse(sessionStorage.getItem("currentUser") || "{}");
+        if (currentUser.firstName) {
+            setUserName(`${currentUser.firstName} ${currentUser.lastName}`);
+        }
+    }, []);
 
-        {/* Budget Donut Chart */}
-        <Card className="col-span-1 rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-0">
-            <CardTitle className="text-lg font-bold">Budget</CardTitle>
-            <div className="h-8 w-8 rounded-full border flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
-              <ArrowUpRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center h-[280px]">
-            <div className="relative h-[160px] w-[160px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-[10px] font-medium text-slate-400">Total for month</span>
-                <span className="text-lg font-bold text-slate-900 dark:text-white">$5,950<span className="text-slate-300">.00</span></span>
-              </div>
-            </div>
-            
-            {/* Custom Legend */}
-            <div className="w-full mt-4 space-y-2">
-              {pieData.map((item, index) => (
-                <div key={index} className="flex items-center text-sm">
-                  <div className="w-2 h-2 rounded-full mr-3" style={{backgroundColor: item.color}}></div>
-                  <span className="text-slate-600 dark:text-slate-400">{item.name}</span>
+    const handleAddTx = (e: React.FormEvent) => {
+        e.preventDefault();
+        const dateObj = new Date();
+        const formattedDate = `${dateObj.getDate()} ${dateObj.toLocaleString('default', { month: 'short' })} ${dateObj.getHours()}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        const selectedWallet = wallets.find(w => w.id === newTx.walletId);
+        addTransaction({ date: formattedDate, amount: Number(newTx.amount), name: newTx.name, method: selectedWallet?.name || "Unknown", category: newTx.category || "General", type: newTx.type, walletId: newTx.walletId });
+        setTxOpen(false); setNewTx({ name: "", amount: "", category: "", type: "EXPENSE", walletId: "w1" });
+    };
+
+    const handleAddWallet = (e: React.FormEvent) => {
+        e.preventDefault();
+        addWallet({ name: newWallet.name, type: newWallet.type, balance: Number(newWallet.balance), accountNumber: newWallet.accountNumber, colorFrom: "from-blue-500", colorTo: "to-indigo-600" });
+        setWalletOpen(false); setNewWallet({ name: "", type: "CARD", balance: "", accountNumber: "" });
+    };
+
+    const handleAddGoal = (e: React.FormEvent) => {
+        e.preventDefault();
+        addGoal({ name: newGoal.name, targetAmount: Number(newGoal.targetAmount), currentAmount: 0 });
+        setGoalOpen(false); setNewGoal({ name: "", targetAmount: "" });
+    };
+
+    const handleFundGoal = (e: React.FormEvent, goalId: string) => {
+        e.preventDefault();
+        addMoneyToGoal(goalId, Number(fundAmount));
+        setFundOpen(null); setFundAmount("");
+    };
+
+    return (
+        <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome back, {userName}!</h2>
                 </div>
-              ))}
+                <div className="flex items-center space-x-3">
+                    <Dialog open={txOpen} onOpenChange={setTxOpen}>
+                        <DialogTrigger asChild><Button className="rounded-full bg-indigo-500 hover:bg-indigo-600 text-white shadow-md"><Plus className="mr-2 h-4 w-4" /> Add Transaction</Button></DialogTrigger>
+                        <DialogContent>
+                            <form onSubmit={handleAddTx}>
+                                <DialogHeader><DialogTitle>New Transaction</DialogTitle></DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <Input value={newTx.name} onChange={(e) => setNewTx({ ...newTx, name: e.target.value })} required placeholder="Merchant/Name" />
+                                    <Input type="number" value={newTx.amount} onChange={(e) => setNewTx({ ...newTx, amount: e.target.value })} required placeholder="Amount ($)" />
+                                    <Input value={newTx.category} onChange={(e) => setNewTx({ ...newTx, category: e.target.value })} required placeholder="Category" />
+                                    <Select value={newTx.type} onValueChange={(val: any) => setNewTx({ ...newTx, type: val })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent><SelectItem value="EXPENSE">Expense</SelectItem><SelectItem value="INCOME">Income</SelectItem></SelectContent>
+                                    </Select>
+                                    <Select value={newTx.walletId} onValueChange={(val: any) => setNewTx({ ...newTx, walletId: val })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>{wallets.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <Button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">Save Transaction</Button>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* BOTTOM ROW: TABLES & PROGRESS */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-        {/* Recent Transactions Table */}
-        <Card className="col-span-1 lg:col-span-2 rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-bold">Recent transactions</CardTitle>
-            <div className="flex space-x-2">
-               <Button variant="outline" size="sm" className="rounded-full text-xs h-8">See all <ArrowUpRight className="ml-1 h-3 w-3"/></Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-none hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-l-full">DATE</TableHead>
-                  <TableHead className="text-xs font-semibold text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20">AMOUNT</TableHead>
-                  <TableHead className="text-xs font-semibold text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20">PAYMENT NAME</TableHead>
-                  <TableHead className="text-xs font-semibold text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20">METHOD</TableHead>
-                  <TableHead className="text-xs font-semibold text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-r-full">CATEGORY</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentTransactions.map((tx) => (
-                  <TableRow key={tx.id} className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                    <TableCell className="font-medium text-xs text-slate-500 py-4">{tx.date}</TableCell>
-                    <TableCell className="font-bold text-slate-900 dark:text-white">{tx.amount}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <div className={`w-8 h-8 rounded-full ${tx.bg} flex items-center justify-center mr-3`}>
-                          <tx.icon className={`h-4 w-4 ${tx.color}`} />
+            <div>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-lg">My Cards & Wallets</h3>
+                    <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
+                        <DialogTrigger asChild><Button variant="ghost" size="sm" className="text-indigo-500"><Plus className="h-4 w-4 mr-1" /> Add Card</Button></DialogTrigger>
+                        <DialogContent>
+                            <form onSubmit={handleAddWallet}>
+                                <DialogHeader><DialogTitle>Add Payment Method</DialogTitle></DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <Input value={newWallet.name} onChange={(e) => setNewWallet({ ...newWallet, name: e.target.value })} required placeholder="Name (e.g. Chase Visa)" />
+                                    <Select value={newWallet.type} onValueChange={(val: any) => setNewWallet({ ...newWallet, type: val })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent><SelectItem value="CARD">Credit/Debit Card</SelectItem><SelectItem value="UPI">UPI</SelectItem><SelectItem value="CASH">Cash</SelectItem></SelectContent>
+                                    </Select>
+                                    <Input type="number" value={newWallet.balance} onChange={(e) => setNewWallet({ ...newWallet, balance: e.target.value })} required placeholder="Current Balance" />
+                                    <Input value={newWallet.accountNumber} onChange={(e) => setNewWallet({ ...newWallet, accountNumber: e.target.value })} placeholder="Last 4 digits or UPI ID (Optional)" />
+                                </div>
+                                <Button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">Add Wallet</Button>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                    {wallets.map((w) => (
+                        <div key={w.id} className={`p-5 rounded-2xl bg-linear-to-br ${w.colorFrom} ${w.colorTo} text-white shadow-lg relative overflow-hidden transition-transform hover:-translate-y-1`}>
+                            <div className="absolute top-[-20%] right-[-10%] w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
+                            <div className="absolute bottom-[-20%] left-[-10%] w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
+                            <div className="flex justify-between items-start relative z-10">
+                                <div><p className="text-white/70 text-xs font-semibold uppercase tracking-wider">{w.type}</p><h3 className="font-bold text-lg mt-0.5">{w.name}</h3></div>
+                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">{w.type === 'CARD' ? <CreditCard size={20} /> : w.type === 'UPI' ? <Smartphone size={20} /> : <Banknote size={20} />}</div>
+                            </div>
+                            <div className="mt-6 relative z-10">
+                                <p className="text-3xl font-bold tracking-tight">${w.balance.toLocaleString()}</p>
+                                {w.accountNumber && <p className="text-white/70 text-sm font-mono mt-1 opacity-80">{w.accountNumber}</p>}
+                            </div>
                         </div>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">{tx.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-500">{tx.method}</TableCell>
-                    <TableCell className="text-sm text-slate-500">{tx.category}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Saving Goals */}
-        <Card className="col-span-1 rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-lg font-bold">Saving goals</CardTitle>
-            <div className="h-8 w-8 rounded-full border flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
-              <ArrowUpRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">MacBook Pro</span>
-                <span className="text-sm font-bold text-indigo-500">$1,650</span>
-              </div>
-              <div className="relative w-full h-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full overflow-hidden">
-                 <div className="absolute top-0 left-0 h-full bg-indigo-500 rounded-full" style={{ width: '25%' }}></div>
-                 <span className="absolute left-2 top-0 h-full flex items-center text-[10px] font-bold text-white">25%</span>
-              </div>
+                    ))}
+                </div>
             </div>
 
-            <div>
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">New car</span>
-                <span className="text-sm font-bold text-indigo-500">$60,000</span>
-              </div>
-              <div className="relative w-full h-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full overflow-hidden">
-                 <div className="absolute top-0 left-0 h-full bg-indigo-500 rounded-full" style={{ width: '42%' }}></div>
-                 <span className="absolute left-2 top-0 h-full flex items-center text-[10px] font-bold text-white">42%</span>
-              </div>
+            <div className="grid gap-6 md:grid-cols-3">
+                <Card className="rounded-3xl border-none shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-linear-to-br from-indigo-600 to-purple-700 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-sm font-medium text-white/80 uppercase tracking-wider">Total balance</CardTitle>
+                            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm"><WalletIcon size={18} className="text-white" /></div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="relative z-10">
+                        <div className="text-4xl font-bold mb-1">${getBalance().toLocaleString()}</div>
+                        <p className="text-white/70 text-xs mt-2">Across all wallets</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
+                    <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Monthly Income</CardTitle>
+                            <div className="p-2 bg-green-100 dark:bg-green-500/20 rounded-lg"><TrendingUp size={18} className="text-green-600 dark:text-green-400" /></div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">${getTotalIncome().toLocaleString()}</div>
+                        <div className="flex items-center text-xs">
+                            <span className="flex items-center text-green-600 bg-green-50 dark:bg-green-500/10 px-2 py-1 rounded-md font-medium"><ArrowUpRight className="h-3 w-3 mr-1" /> +12.5%</span>
+                            <span className="text-slate-400 ml-2">vs last month</span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
+                    <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Monthly Expense</CardTitle>
+                            <div className="p-2 bg-red-100 dark:bg-red-500/20 rounded-lg"><TrendingDown size={18} className="text-red-600 dark:text-red-400" /></div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold text-slate-900 dark:text-white mb-2">${getTotalExpense().toLocaleString()}</div>
+                        <div className="flex items-center text-xs">
+                            <span className="flex items-center text-red-500 bg-red-50 dark:bg-red-500/10 px-2 py-1 rounded-md font-medium"><ArrowDownRight className="h-3 w-3 mr-1" /> -4.2%</span>
+                            <span className="text-slate-400 ml-2">vs last month</span>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            <div>
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">New house</span>
-                <span className="text-sm font-bold text-indigo-500">$150,000</span>
-              </div>
-              <div className="relative w-full h-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full overflow-hidden">
-                 <div className="absolute top-0 left-0 h-full bg-indigo-500 rounded-full" style={{ width: '3%' }}></div>
-                 <span className="absolute left-1 top-0 h-full flex items-center text-[10px] font-bold text-white">3%</span>
-              </div>
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+                <Card className="col-span-1 lg:col-span-2 rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-lg font-bold">Recent transactions</CardTitle>
+                        <Button variant="ghost" size="sm" className="rounded-full text-indigo-500 text-xs h-8 hover:bg-indigo-50 dark:hover:bg-indigo-500/10">See all <ArrowUpRight className="ml-1 h-3 w-3" /></Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+                            <Table>
+                                <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                                    <TableRow className="border-none hover:bg-transparent">
+                                        <TableHead className="text-xs font-semibold text-slate-500">DATE</TableHead>
+                                        <TableHead className="text-xs font-semibold text-slate-500">DETAILS</TableHead>
+                                        <TableHead className="text-xs font-semibold text-slate-500">METHOD</TableHead>
+                                        <TableHead className="text-xs font-semibold text-slate-500 text-right">AMOUNT</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {transactions.slice(0, 5).map((tx) => {
+                                        const { icon: Icon, color, bg } = getCategoryIcon(tx.category);
+                                        return (
+                                            <TableRow key={tx.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-800/80 transition-colors">
+                                                <TableCell className="font-medium text-xs text-slate-500 whitespace-nowrap">{tx.date}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center">
+                                                        <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mr-3 shadow-sm`}><Icon className={`h-4 w-4 ${color}`} /></div>
+                                                        <div>
+                                                            <p className="font-semibold text-sm text-slate-900 dark:text-white">{tx.name}</p>
+                                                            <p className="text-xs text-slate-500">{tx.category}</p>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell><span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">{tx.method}</span></TableCell>
+                                                <TableCell className={`font-bold text-right ${tx.type === 'EXPENSE' ? 'text-slate-900 dark:text-white' : 'text-green-500'}`}>
+                                                    {tx.type === 'EXPENSE' ? '-' : '+'}${tx.amount.toLocaleString()}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        {transactions.length === 0 && <div className="py-8 text-center text-slate-500 text-sm">No transactions yet. Add some to see them here!</div>}
+                    </CardContent>
+                </Card>
+
+                <Card className="col-span-1 rounded-3xl border-none shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-slate-900/50">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-lg font-bold">Saving Goals</CardTitle>
+                        <Dialog open={goalOpen} onOpenChange={setGoalOpen}>
+                            <DialogTrigger asChild><Button variant="ghost" size="icon" className="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-full"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                            <DialogContent>
+                                <form onSubmit={handleAddGoal}>
+                                    <DialogHeader><DialogTitle>Create Goal</DialogTitle></DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <Input value={newGoal.name} onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })} required placeholder="Goal Name (e.g. Vacation)" />
+                                        <Input type="number" value={newGoal.targetAmount} onChange={(e) => setNewGoal({ ...newGoal, targetAmount: e.target.value })} required placeholder="Target Amount ($)" />
+                                    </div>
+                                    <Button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">Save Goal</Button>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-4">
+                        {goals.map(g => {
+                            const percent = Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100));
+                            return (
+                                <div key={g.id} className="relative group p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-white dark:bg-slate-900">
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-sm font-bold text-slate-800 dark:text-white">{g.name}</span>
+                                        <span className="text-sm font-semibold text-slate-500">${g.currentAmount} / <span className="text-indigo-500">${g.targetAmount}</span></span>
+                                    </div>
+                                    <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
+                                        <div className="h-full bg-linear-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div>
+                                    </div>
+
+                                    {fundOpen === g.id ? (
+                                        <form onSubmit={(e) => handleFundGoal(e, g.id)} className="mt-3 flex gap-2">
+                                            <Input type="number" value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} placeholder="Amount $" className="h-8 text-xs bg-slate-50 dark:bg-slate-800 border-none" required />
+                                            <Button type="submit" size="sm" className="h-8 text-xs bg-indigo-500 hover:bg-indigo-600 text-white">Add</Button>
+                                            <Button type="button" variant="ghost" size="sm" onClick={() => setFundOpen(null)} className="h-8 rounded-full">Cancel</Button>
+                                        </form>
+                                    ) : (
+                                        <Button variant="outline" size="sm" onClick={() => setFundOpen(g.id)} className="w-full mt-3 text-xs h-8 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-500 hover:text-indigo-500 transition-colors">Deposit Funds</Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }

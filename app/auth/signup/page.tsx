@@ -14,9 +14,13 @@ const zeyada = Zeyada({ subsets: ["latin"], weight: "400" })
 
 export default function SignupPage() {
     const [mounted, setMounted] = useState(false);
+    
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    
     const router = useRouter();
 
     useEffect(() => setMounted(true), []);
@@ -28,11 +32,12 @@ export default function SignupPage() {
         setTimeout(() => {
             const existingUsers = JSON.parse(sessionStorage.getItem("mockUsers") || "[]");
             
-            existingUsers.push({ email, password });
-            
+            existingUsers.push({ firstName, lastName, email, password });
             sessionStorage.setItem("mockUsers", JSON.stringify(existingUsers));
 
-            router.push("/auth/login"); 
+            sessionStorage.setItem("currentUser", JSON.stringify({ firstName, lastName, email }));
+
+            router.push("/auth/login");
             
         }, 800);
     };
@@ -83,7 +88,7 @@ export default function SignupPage() {
                 </div>
             </div>
 
-            <main className="flex flex-col w-full lg:w-1/2 items-center justify-center text-center m-2.5 rounded-lg bg-[#4285f4] z-10">
+            <main className="flex flex-col w-full lg:w-1/2 items-center justify-center text-center m-2.5 rounded-lg bg-[#F3E8FD] dark:bg-blue-500/20 z-10">
                 <header className="px-6 py-4 flex lg:hidden items-center justify-between w-full mx-auto z-10 absolute top-0">
                     <p className={zeyada.className + " text-[48px] font-bold text-white tracking-tight select-none"}>
                         finsight
@@ -98,8 +103,27 @@ export default function SignupPage() {
                     <p className={zeyada.className + " text-[48px] font-bold text-black dark:text-white tracking-tight select-none"}>
                         finsight
                     </p>
-                    <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">Create your account to get started</p>
+                    <p className="text-lg text-gray-700 dark:text-gray-300 mb-2">Create your account to get started</p>
                     
+                    <div className="flex gap-2 w-full">
+                        <input 
+                            type="text" 
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="First Name" 
+                            required 
+                            className="w-1/2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" 
+                        />
+                        <input 
+                            type="text" 
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="Last Name" 
+                            required 
+                            className="w-1/2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" 
+                        />
+                    </div>
+
                     <input 
                         type="text" 
                         value={email}
@@ -126,7 +150,7 @@ export default function SignupPage() {
                     
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                         Already have an account?{" "}
-                        <Link href="/" className="text-blue-500 hover:underline">
+                        <Link href="/auth/login" className="text-blue-500 hover:underline">
                             Login
                         </Link>
                     </p>
